@@ -425,7 +425,7 @@ fn get_reserved_word_token<'a>(
             return Err(Err::Error(Error::new(input, ErrorKind::IsNot)));
         }
     }
-
+    println!("get_reserved_word_token input:{:?}", input);
     alt((
         get_top_level_reserved_token,
         get_newline_reserved_token(last_reserved_token),
@@ -446,6 +446,7 @@ fn get_uc_words(input: &str, words: usize) -> String {
 
 fn get_top_level_reserved_token(input: &str) -> IResult<&str, Token<'_>> {
     let uc_input = get_uc_words(input, 3);
+    println!("get_top_level_reserved_token input:{:?} uc_input:{:?}", input,  uc_input);
     let result: IResult<&str, &str> = alt((
         terminated(tag("ADD"), end_of_word),
         terminated(tag("AFTER"), end_of_word),
@@ -494,8 +495,11 @@ fn get_top_level_reserved_token(input: &str) -> IResult<&str, Token<'_>> {
 fn get_newline_reserved_token<'a>(
     last_reserved_token: Option<Token<'a>>,
 ) -> impl FnMut(&'a str) -> IResult<&'a str, Token<'a>> {
+    println!("get_newline_reserved_token last_reserved_token:{:?}",  last_reserved_token);
+    println!("=======================");
     move |input: &'a str| {
         let uc_input = get_uc_words(input, 3);
+        println!("get_newline_reserved_token last_reserved_token:{:?} uc_input={:?}",  last_reserved_token, uc_input);
         let result: IResult<&str, &str> = alt((
             terminated(tag("AND"), end_of_word),
             terminated(tag("CROSS APPLY"), end_of_word),
@@ -512,6 +516,7 @@ fn get_newline_reserved_token<'a>(
             terminated(tag("RIGHT OUTER JOIN"), end_of_word),
             terminated(tag("WHEN"), end_of_word),
             terminated(tag("XOR"), end_of_word),
+            terminated(tag("ON CONFLICT"), end_of_word),
         ))(&uc_input);
         if let Ok((_, token)) = result {
             let final_word = token.split(' ').last().unwrap();
@@ -543,6 +548,7 @@ fn get_newline_reserved_token<'a>(
 
 fn get_top_level_reserved_token_no_indent(input: &str) -> IResult<&str, Token<'_>> {
     let uc_input = get_uc_words(input, 2);
+    println!("get_top_level_reserved_token_no_indent input:{:?} uc_input:{:?}", input,  uc_input);
     let result: IResult<&str, &str> = alt((
         terminated(tag("BEGIN"), end_of_word),
         terminated(tag("DECLARE"), end_of_word),
@@ -572,6 +578,7 @@ fn get_top_level_reserved_token_no_indent(input: &str) -> IResult<&str, Token<'_
 
 fn get_plain_reserved_token(input: &str) -> IResult<&str, Token<'_>> {
     let uc_input = get_uc_words(input, 1);
+    println!("get_plain_reserved_token input:{:?} uc_input:{:?}", input,  uc_input);
     let result: IResult<&str, &str> = alt((
         terminated(tag("ACCESSIBLE"), end_of_word),
         terminated(tag("ACTION"), end_of_word),
@@ -739,6 +746,7 @@ fn get_plain_reserved_token(input: &str) -> IResult<&str, Token<'_>> {
                                     terminated(tag("ON DELETE"), end_of_word),
                                     terminated(tag("ON UPDATE"), end_of_word),
                                     alt((
+                                        // terminated(tag("ON CONFLICT"), end_of_word),
                                         terminated(tag("ON"), end_of_word),
                                         terminated(tag("ONLY"), end_of_word),
                                         terminated(tag("OPEN"), end_of_word),
@@ -758,8 +766,8 @@ fn get_plain_reserved_token(input: &str) -> IResult<&str, Token<'_>> {
                                         terminated(tag("PROCESS"), end_of_word),
                                         terminated(tag("PROCESSLIST"), end_of_word),
                                         terminated(tag("PURGE"), end_of_word),
-                                        terminated(tag("QUICK"), end_of_word),
                                         alt((
+                                            terminated(tag("QUICK"), end_of_word),
                                             terminated(tag("RAID0"), end_of_word),
                                             terminated(tag("RAID_CHUNKS"), end_of_word),
                                             terminated(tag("RAID_CHUNKSIZE"), end_of_word),
@@ -779,8 +787,8 @@ fn get_plain_reserved_token(input: &str) -> IResult<&str, Token<'_>> {
                                             terminated(tag("RESET"), end_of_word),
                                             terminated(tag("RESTORE"), end_of_word),
                                             terminated(tag("RESTRICT"), end_of_word),
-                                            terminated(tag("RETURN"), end_of_word),
                                             alt((
+                                                terminated(tag("RETURN"), end_of_word),
                                                 terminated(tag("RETURNS"), end_of_word),
                                                 terminated(tag("REVOKE"), end_of_word),
                                                 terminated(tag("RLIKE"), end_of_word),
@@ -800,8 +808,8 @@ fn get_plain_reserved_token(input: &str) -> IResult<&str, Token<'_>> {
                                                 terminated(tag("SONAME"), end_of_word),
                                                 terminated(tag("SOUNDS"), end_of_word),
                                                 terminated(tag("SQL"), end_of_word),
-                                                terminated(tag("SQL_AUTO_IS_NULL"), end_of_word),
                                                 alt((
+                                                    terminated(tag("SQL_AUTO_IS_NULL"), end_of_word),
                                                     terminated(tag("SQL_BIG_RESULT"), end_of_word),
                                                     terminated(tag("SQL_BIG_SELECTS"), end_of_word),
                                                     terminated(tag("SQL_BIG_TABLES"), end_of_word),
@@ -848,8 +856,8 @@ fn get_plain_reserved_token(input: &str) -> IResult<&str, Token<'_>> {
                                                     ),
                                                     terminated(tag("SQL_WARNINGS"), end_of_word),
                                                     terminated(tag("START"), end_of_word),
-                                                    terminated(tag("STARTING"), end_of_word),
                                                     alt((
+                                                        terminated(tag("STARTING"), end_of_word),
                                                         terminated(tag("STATUS"), end_of_word),
                                                         terminated(tag("STOP"), end_of_word),
                                                         terminated(tag("STORAGE"), end_of_word),
@@ -875,8 +883,8 @@ fn get_plain_reserved_token(input: &str) -> IResult<&str, Token<'_>> {
                                                         terminated(tag("TRUNCATE"), end_of_word),
                                                         terminated(tag("TYPE"), end_of_word),
                                                         terminated(tag("TYPES"), end_of_word),
-                                                        terminated(tag("UNCOMMITTED"), end_of_word),
                                                         alt((
+                                                            terminated(tag("UNCOMMITTED"), end_of_word),
                                                             terminated(tag("UNIQUE"), end_of_word),
                                                             terminated(tag("UNLOCK"), end_of_word),
                                                             terminated(
@@ -895,10 +903,12 @@ fn get_plain_reserved_token(input: &str) -> IResult<&str, Token<'_>> {
                                                             terminated(tag("WITH"), end_of_word),
                                                             terminated(tag("WORK"), end_of_word),
                                                             terminated(tag("WRITE"), end_of_word),
-                                                            terminated(
-                                                                tag("YEAR_MONTH"),
-                                                                end_of_word,
-                                                            ),
+                                                            alt((
+                                                                terminated(
+                                                                    tag("YEAR_MONTH"),
+                                                                    end_of_word,
+                                                                ),
+                                                            )),
                                                         )),
                                                     )),
                                                 )),
@@ -913,6 +923,7 @@ fn get_plain_reserved_token(input: &str) -> IResult<&str, Token<'_>> {
             )),
         )),
     ))(&uc_input);
+    println!("result={:?}", result);
     if let Ok((_, token)) = result {
         let input_end_pos = token.len();
         let (token, input) = input.split_at(input_end_pos);
