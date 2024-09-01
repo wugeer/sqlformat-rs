@@ -1641,7 +1641,7 @@ mod tests {
               users (name, email)
             VALUES
               ($1, $2) ON CONFLICT (email) DO 
-              UPDATE
+                                        UPDATE
             SET
               name = $1"
         );

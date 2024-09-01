@@ -967,8 +967,11 @@ fn get_plain_reserved_two_token<'a >(input: &'a str) -> IResult<&'a str, Token<'
     ))(&uc_input);
     if let Ok((_, token)) = result {
         let input_end_pos = token.len();
+        let whitespace_count = input.chars().take(input_end_pos).filter(|c| c.is_whitespace()).count();
         println!("000000000000000000000000 len={:?}", input_end_pos);
-        let (token, input) = input.split_at(input_end_pos);
+        println!("000000000000000000000000 len={:?}", input_end_pos + whitespace_count - 1);
+
+        let (token, input) = input.split_at(input_end_pos + whitespace_count - 1);
         Ok((
             input,
             Token {
