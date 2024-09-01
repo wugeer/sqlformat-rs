@@ -11,6 +11,7 @@ pub(crate) fn format(tokens: &[Token<'_>], params: &QueryParams, options: Format
     let mut formatted_query = String::new();
     for (index, token) in tokens.iter().enumerate() {
         formatter.index = index;
+        println!("token={:?} formatted_query={:?}", token, formatted_query);
 
         if token.kind == TokenKind::Whitespace {
             // ignore (we do our own whitespace formatting)
@@ -19,6 +20,7 @@ pub(crate) fn format(tokens: &[Token<'_>], params: &QueryParams, options: Format
         } else if token.kind == TokenKind::BlockComment {
             formatter.format_block_comment(token, &mut formatted_query);
         } else if token.kind == TokenKind::ReservedTopLevel {
+            println!("test here token={:?} formatted_query={:?}",token, formatted_query);
             formatter.format_top_level_reserved_word(token, &mut formatted_query);
             formatter.previous_reserved_word = Some(token);
         } else if token.kind == TokenKind::ReservedTopLevelNoIndent {
@@ -97,6 +99,7 @@ impl<'a> Formatter<'a> {
             && previous_token.unwrap().value.contains("\n")
             && is_whitespace_followed_by_special_token
         {
+            println!("format line comment");
             self.add_new_line(query);
         } else if let Some(Token { value, .. }) = self.previous_token(2) {
             if *value == "," {
@@ -105,32 +108,41 @@ impl<'a> Formatter<'a> {
             }
         }
         query.push_str(token.value);
+        println!("format line comment22222");
         self.add_new_line(query);
     }
 
     fn format_block_comment(&self, token: &Token<'_>, query: &mut String) {
+        println!("format_block_comment");
         self.add_new_line(query);
         query.push_str(&self.indent_comment(token.value));
+        println!("format_block_comment2");
         self.add_new_line(query);
     }
 
     fn format_top_level_reserved_word(&mut self, token: &Token<'_>, query: &mut String) {
         self.indentation.decrease_top_level();
+        println!("format_top_level_reserved_word");
         self.add_new_line(query);
         self.indentation.increase_top_level();
         query.push_str(&self.equalize_whitespace(&self.format_reserved_word(token.value)));
+        println!("format_top_level_reserved_word222");
         self.add_new_line(query);
     }
 
     fn format_top_level_reserved_word_no_indent(&mut self, token: &Token<'_>, query: &mut String) {
         self.indentation.decrease_top_level();
+        println!("format_top_level_reserved_word_no_indent");
         self.add_new_line(query);
         query.push_str(&self.equalize_whitespace(&self.format_reserved_word(token.value)));
+        println!("format_top_level_reserved_word_no_indent22");
         self.add_new_line(query);
     }
 
     fn format_newline_reserved_word(&self, token: &Token<'_>, query: &mut String) {
+        println!("--------==============================={:?}", query);
         self.add_new_line(query);
+        println!("--------==============================={:?}", query);
         query.push_str(&self.equalize_whitespace(&self.format_reserved_word(token.value)));
         query.push(' ');
     }
@@ -171,6 +183,7 @@ impl<'a> Formatter<'a> {
 
         if !self.inline_block.is_active() {
             self.indentation.increase_block_level();
+            println!("format_opening_parentheses");
             self.add_new_line(query);
         }
     }
@@ -186,10 +199,12 @@ impl<'a> Formatter<'a> {
         token.value = &value;
 
         if self.inline_block.is_active() {
+            println!("format_closing_parentheses1111");
             self.inline_block.end();
             self.format_with_space_after(&token, query);
         } else {
             self.indentation.decrease_block_level();
+            println!("format_closing_parentheses");
             self.add_new_line(query);
             self.format_with_spaces(&token, query);
         }
@@ -216,6 +231,7 @@ impl<'a> Formatter<'a> {
         {
             return;
         }
+        println!("format_comma");
         self.add_new_line(query);
     }
 
@@ -244,7 +260,9 @@ impl<'a> Formatter<'a> {
         if !query.ends_with('\n') {
             query.push('\n');
         }
+        println!("111111111111111111");
         query.push_str(&self.indentation.get_indent());
+        println!("222222222222222222");
     }
 
     fn trim_spaces_end(&self, query: &mut String) {
@@ -261,6 +279,7 @@ impl<'a> Formatter<'a> {
             if i == 0 {
                 combined.push_str(line)
             } else if line.starts_with([' ', '\t']) {
+                println!("333333333333");
                 let indent = self.indentation.get_indent();
                 let start_trimmed = line.trim_start_matches([' ', '\t']);
                 combined.reserve(indent.len() + start_trimmed.len() + 2);
@@ -279,20 +298,25 @@ impl<'a> Formatter<'a> {
 
     fn format_reserved_word<'t>(&self, token: &'t str) -> Cow<'t, str> {
         if self.options.uppercase {
-            Cow::Owned(token.to_uppercase())
+            Cow::Owned(token.split_whitespace().collect::<Vec<&str>>().join(" ").to_uppercase())
         } else {
-            Cow::Borrowed(token)
+            Cow::Owned(token.split_whitespace().collect::<Vec<&str>>().join(" "))
         }
     }
 
     /// Replace any sequence of whitespace characters with single space
     fn equalize_whitespace(&self, token: &str) -> String {
+ 
         let mut combined = String::with_capacity(token.len());
         for s in token.split(char::is_whitespace).filter(|s| !s.is_empty()) {
             if !combined.is_empty() {
                 combined.push(' ');
             }
             combined.push_str(s);
+        }
+        if token == "ON CONFLICT" {
+            println!("///////////////////////////////////////");
+            println!("combined={:?}", combined);
         }
         combined
     }

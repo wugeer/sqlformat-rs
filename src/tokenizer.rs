@@ -7,14 +7,13 @@ use nom::error::{Error, ErrorKind};
 use nom::multi::many0;
 use nom::sequence::{terminated, tuple};
 use nom::{AsChar, Err, IResult};
-use std::borrow::Cow;
+use std::borrow::{Borrow, Cow};
 use unicode_categories::UnicodeCategories;
 
 pub(crate) fn tokenize(mut input: &str, named_placeholders: bool) -> Vec<Token<'_>> {
     let mut tokens: Vec<Token> = Vec::new();
 
     let mut last_reserved_token = None;
-
     // Keep processing the string until it is empty
     while let Ok(result) = get_next_token(
         input,
@@ -22,6 +21,7 @@ pub(crate) fn tokenize(mut input: &str, named_placeholders: bool) -> Vec<Token<'
         last_reserved_token.clone(),
         named_placeholders,
     ) {
+        println!("result:{:?}", &result);
         if result.1.kind == TokenKind::Reserved {
             last_reserved_token = Some(result.1.clone());
         }
@@ -88,6 +88,19 @@ fn get_next_token<'a>(
     last_reserved_token: Option<Token<'a>>,
     named_placeholders: bool,
 ) -> IResult<&'a str, Token<'a>> {
+    // print!("input={:?}, previous_token={:?}, last_reserved_token={:?}, named_placeholders={:?}", input, previous_token, last_reserved_token, named_placeholders);
+    if input.starts_with("ON CONF") {
+        println!("");
+        println!("get_whitespace_token(input)={:?}", get_whitespace_token(input));
+        println!("get_comment_token(input)={:?}", get_comment_token(input));
+        println!("get_open_paren_token(input)={:?}", get_open_paren_token(input));
+        println!("get_close_paren_token(input)={:?}", get_close_paren_token(input));
+        println!("get_number_token(input)={:?}", get_number_token(input));
+        println!("get_reserved_word_token(input)={:?}", get_reserved_word_token(input, previous_token.clone(), last_reserved_token.clone()));
+        println!("get_placeholder_token(input)={:?}", get_placeholder_token(input, named_placeholders));
+        println!("get_word_token(input)={:?}", get_word_token(input));
+        println!("get_operator_token(input)={:?}", get_operator_token(input));
+    }
     get_whitespace_token(input)
         .or_else(|_| get_comment_token(input))
         .or_else(|_| get_string_token(input))
@@ -425,6 +438,13 @@ fn get_reserved_word_token<'a>(
             return Err(Err::Error(Error::new(input, ErrorKind::IsNot)));
         }
     }
+    if input.starts_with("ON CONFL") {
+        println!("++++++++++++++++++");
+        println!("get_top_level_reserved_token={:?}",get_top_level_reserved_token(input));
+        println!("get_top_level_reserved_token_no_indent={:?}",get_top_level_reserved_token_no_indent(input));
+        // println!("get_newline_reserved_token={:#?}", get_newline_reserved_token(last_reserved_token));
+        println!("get_plain_reserved_token={:?}",get_plain_reserved_token(input));
+    }
 
     alt((
         get_top_level_reserved_token,
@@ -512,6 +532,7 @@ fn get_newline_reserved_token<'a>(
             terminated(tag("RIGHT OUTER JOIN"), end_of_word),
             terminated(tag("WHEN"), end_of_word),
             terminated(tag("XOR"), end_of_word),
+            terminated(tag("ON CONFLICT"), end_of_word),
         ))(&uc_input);
         if let Ok((_, token)) = result {
             let final_word = token.split(' ').last().unwrap();
@@ -570,6 +591,7 @@ fn get_top_level_reserved_token_no_indent(input: &str) -> IResult<&str, Token<'_
     }
 }
 fn get_plain_reserved_token(input: &str) -> IResult<&str, Token<'_>> {
+    println!("1234124131312");
     alt((get_plain_reserved_two_token, get_plain_reserved_one_token))(input)
 }
 fn get_plain_reserved_one_token(input: &str) -> IResult<&str, Token<'_>> {
@@ -737,7 +759,10 @@ fn get_plain_reserved_one_token(input: &str) -> IResult<&str, Token<'_>> {
                                     terminated(tag("NOW()"), end_of_word),
                                     terminated(tag("NULL"), end_of_word),
                                     terminated(tag("OFFSET"), end_of_word),
+                                    terminated(tag("ON DELETE"), end_of_word),
+                                    terminated(tag("ON UPDATE"), end_of_word),
                                     alt((
+                                        terminated(tag("ON UPDATE"), end_of_word),
                                         terminated(tag("ON"), end_of_word),
                                         terminated(tag("ONLY"), end_of_word),
                                         terminated(tag("OPEN"), end_of_word),
@@ -757,8 +782,8 @@ fn get_plain_reserved_one_token(input: &str) -> IResult<&str, Token<'_>> {
                                         terminated(tag("PROCESS"), end_of_word),
                                         terminated(tag("PROCESSLIST"), end_of_word),
                                         terminated(tag("PURGE"), end_of_word),
-                                        terminated(tag("QUICK"), end_of_word),
                                         alt((
+                                            terminated(tag("QUICK"), end_of_word),
                                             terminated(tag("RAID0"), end_of_word),
                                             terminated(tag("RAID_CHUNKS"), end_of_word),
                                             terminated(tag("RAID_CHUNKSIZE"), end_of_word),
@@ -778,8 +803,8 @@ fn get_plain_reserved_one_token(input: &str) -> IResult<&str, Token<'_>> {
                                             terminated(tag("RESET"), end_of_word),
                                             terminated(tag("RESTORE"), end_of_word),
                                             terminated(tag("RESTRICT"), end_of_word),
-                                            terminated(tag("RETURN"), end_of_word),
                                             alt((
+                                                terminated(tag("RETURN"), end_of_word),
                                                 terminated(tag("RETURNS"), end_of_word),
                                                 terminated(tag("REVOKE"), end_of_word),
                                                 terminated(tag("RLIKE"), end_of_word),
@@ -799,8 +824,8 @@ fn get_plain_reserved_one_token(input: &str) -> IResult<&str, Token<'_>> {
                                                 terminated(tag("SONAME"), end_of_word),
                                                 terminated(tag("SOUNDS"), end_of_word),
                                                 terminated(tag("SQL"), end_of_word),
-                                                terminated(tag("SQL_AUTO_IS_NULL"), end_of_word),
                                                 alt((
+                                                    terminated(tag("SQL_AUTO_IS_NULL"), end_of_word),
                                                     terminated(tag("SQL_BIG_RESULT"), end_of_word),
                                                     terminated(tag("SQL_BIG_SELECTS"), end_of_word),
                                                     terminated(tag("SQL_BIG_TABLES"), end_of_word),
@@ -847,8 +872,8 @@ fn get_plain_reserved_one_token(input: &str) -> IResult<&str, Token<'_>> {
                                                     ),
                                                     terminated(tag("SQL_WARNINGS"), end_of_word),
                                                     terminated(tag("START"), end_of_word),
-                                                    terminated(tag("STARTING"), end_of_word),
                                                     alt((
+                                                        terminated(tag("STARTING"), end_of_word),
                                                         terminated(tag("STATUS"), end_of_word),
                                                         terminated(tag("STOP"), end_of_word),
                                                         terminated(tag("STORAGE"), end_of_word),
@@ -874,8 +899,8 @@ fn get_plain_reserved_one_token(input: &str) -> IResult<&str, Token<'_>> {
                                                         terminated(tag("TRUNCATE"), end_of_word),
                                                         terminated(tag("TYPE"), end_of_word),
                                                         terminated(tag("TYPES"), end_of_word),
-                                                        terminated(tag("UNCOMMITTED"), end_of_word),
                                                         alt((
+                                                            terminated(tag("UNCOMMITTED"), end_of_word),
                                                             terminated(tag("UNIQUE"), end_of_word),
                                                             terminated(tag("UNLOCK"), end_of_word),
                                                             terminated(
@@ -912,6 +937,7 @@ fn get_plain_reserved_one_token(input: &str) -> IResult<&str, Token<'_>> {
             )),
         )),
     ))(&uc_input);
+    println!("result={:?}", result);
     if let Ok((_, token)) = result {
         let input_end_pos = token.len();
         let (token, input) = input.split_at(input_end_pos);
@@ -928,15 +954,20 @@ fn get_plain_reserved_one_token(input: &str) -> IResult<&str, Token<'_>> {
     }
 }
 
-fn get_plain_reserved_two_token(input: &str) -> IResult<&str, Token<'_>> {
+fn get_plain_reserved_two_token<'a >(input: &'a str) -> IResult<&'a str, Token<'_>> {
+    println!("000000000000000000000000 input={:?}", input);
+    // let new_input = input.split_whitespace().collect::<Vec<&str>>().join(" ").as_str();
     let uc_input = get_uc_words(input, 2);
+    println!("000000000000000000000000 uc_input={:?}", uc_input);
     let result: IResult<&str, &str> = alt((
         terminated(tag("CHARACTER SET"), end_of_word),
         terminated(tag("ON DELETE"), end_of_word),
         terminated(tag("ON UPDATE"), end_of_word),
+        terminated(tag("DO UPDATE"), end_of_word),
     ))(&uc_input);
     if let Ok((_, token)) = result {
         let input_end_pos = token.len();
+        println!("000000000000000000000000 len={:?}", input_end_pos);
         let (token, input) = input.split_at(input_end_pos);
         Ok((
             input,

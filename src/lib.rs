@@ -1632,4 +1632,34 @@ mod tests {
         );
         assert_eq!(format(input, &QueryParams::None, options), expected);
     }
+
+    #[test]
+    fn it_formats_on_conflict() {
+        let input = indoc!(
+            "
+            INSERT INTO
+              users (name, email)
+            VALUES
+              ($1, $2) ON CONFLICT (email) DO 
+              UPDATE
+            SET
+              name = $1"
+        );
+        let options = FormatOptions {
+            indent: Indent::Spaces(4),
+            ..Default::default()
+        };
+        let expected = indoc!(
+            "
+            INSERT INTO
+                users (name, email)
+            VALUES
+                ($1, $2)
+                ON CONFLICT (email) DO UPDATE
+            SET
+                name = $1"
+        );
+
+        assert_eq!(format(input, &QueryParams::None, options), expected);
+    }
 }
