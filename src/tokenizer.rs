@@ -455,17 +455,55 @@ fn get_reserved_word_token<'a>(
 }
 
 // We have to be a bit creative here for performance reasons
-fn get_uc_words(input: &str, words: usize) -> String {
-    input
-        .split_whitespace()
-        .take(words)
-        .collect::<Vec<&str>>()
-        .join(" ")
-        .to_ascii_uppercase()
+fn get_uc_words(input: &str, words: usize) -> (String, usize) {
+    let mut word_count = 0;
+    let mut last_char_index = None;
+    let mut last_char_is_non_whitespace = false; 
+
+    // Iterate through each character and its index in the string
+    for (i, c) in input.char_indices() {
+        if c.is_ascii_whitespace() {
+            // Current character is whitespace, and the last character was non-whitespace,
+            // indicating the end of a word
+            if last_char_is_non_whitespace {
+                word_count += 1;
+                if word_count == words {
+                    last_char_index = Some(i - 1);
+                    break;
+                }
+            }
+            last_char_is_non_whitespace = false; 
+        } else {
+            last_char_is_non_whitespace = true;
+        }
+    }
+
+    // Handle the case where the target word count hasn't been reached, but the string still has characters
+    if word_count < words && last_char_is_non_whitespace {
+        last_char_index = Some(input.len() - 1);
+    }
+    println!("xxxxxxxxxxxxxxxxxxxxxxxxxx input={:?}", input);
+    println!("xxxxxxxxxxxxxxxxxxxxxxxxxx last_char_index={:?}", last_char_index);
+    match last_char_index {
+        Some(index) =>    {
+            (input[0..=index]
+            .split_whitespace()
+            .take(words)
+            .collect::<Vec<&str>>()
+            .join(" ")
+            .to_ascii_uppercase(), index+1)},
+        None => (input.to_string(), input.len()),
+    }
+    // input
+    //     .split_whitespace()
+    //     .take(words)
+    //     .collect::<Vec<&str>>()
+    //     .join(" ")
+    //     .to_ascii_uppercase()
 }
 
 fn get_top_level_reserved_token(input: &str) -> IResult<&str, Token<'_>> {
-    let uc_input = get_uc_words(input, 3);
+    let (uc_input, _) = get_uc_words(input, 3);
     let result: IResult<&str, &str> = alt((
         terminated(tag("ADD"), end_of_word),
         terminated(tag("AFTER"), end_of_word),
@@ -515,7 +553,7 @@ fn get_newline_reserved_token<'a>(
     last_reserved_token: Option<Token<'a>>,
 ) -> impl FnMut(&'a str) -> IResult<&'a str, Token<'a>> {
     move |input: &'a str| {
-        let uc_input = get_uc_words(input, 3);
+        let (uc_input, _) = get_uc_words(input, 3);
         let result: IResult<&str, &str> = alt((
             terminated(tag("AND"), end_of_word),
             terminated(tag("CROSS APPLY"), end_of_word),
@@ -563,7 +601,7 @@ fn get_newline_reserved_token<'a>(
 }
 
 fn get_top_level_reserved_token_no_indent(input: &str) -> IResult<&str, Token<'_>> {
-    let uc_input = get_uc_words(input, 2);
+    let (uc_input, _) = get_uc_words(input, 2);
     let result: IResult<&str, &str> = alt((
         terminated(tag("BEGIN"), end_of_word),
         terminated(tag("DECLARE"), end_of_word),
@@ -595,7 +633,7 @@ fn get_plain_reserved_token(input: &str) -> IResult<&str, Token<'_>> {
     alt((get_plain_reserved_two_token, get_plain_reserved_one_token))(input)
 }
 fn get_plain_reserved_one_token(input: &str) -> IResult<&str, Token<'_>> {
-    let uc_input = get_uc_words(input, 1);
+    let (uc_input, _) = get_uc_words(input, 1);
     let result: IResult<&str, &str> = alt((
         terminated(tag("ACCESSIBLE"), end_of_word),
         terminated(tag("ACTION"), end_of_word),
@@ -955,23 +993,24 @@ fn get_plain_reserved_one_token(input: &str) -> IResult<&str, Token<'_>> {
 }
 
 fn get_plain_reserved_two_token<'a >(input: &'a str) -> IResult<&'a str, Token<'_>> {
-    println!("000000000000000000000000 input={:?}", input);
+    println!("000000000000000000000000 get_plain_reserved_two_token input={:?}", input);
     // let new_input = input.split_whitespace().collect::<Vec<&str>>().join(" ").as_str();
-    let uc_input = get_uc_words(input, 2);
-    println!("000000000000000000000000 uc_input={:?}", uc_input);
+    let (uc_input, len_) = get_uc_words(input, 2);
+    println!("000000000000000000000000  get_plain_reserved_two_token uc_input={:?}", uc_input);
     let result: IResult<&str, &str> = alt((
         terminated(tag("CHARACTER SET"), end_of_word),
         terminated(tag("ON DELETE"), end_of_word),
         terminated(tag("ON UPDATE"), end_of_word),
         terminated(tag("DO UPDATE"), end_of_word),
     ))(&uc_input);
+    println!("000000000000000000000000  get_plain_reserved_two_token result={:?}", result);
     if let Ok((_, token)) = result {
         let input_end_pos = token.len();
-        let whitespace_count = input.chars().take(input_end_pos).filter(|c| c.is_whitespace()).count();
-        println!("000000000000000000000000 len={:?}", input_end_pos);
-        println!("000000000000000000000000 len={:?}", input_end_pos + whitespace_count - 1);
+        let whitespace_count = input.chars().take(len_).filter(|c| c.is_whitespace()).count();
+        println!("000000000000000000000000 get_plain_reserved_two_token len={:?}", input_end_pos);
+        println!("000000000000000000000000 get_plain_reserved_two_token len={:?}", input_end_pos + whitespace_count - 1);
 
-        let (token, input) = input.split_at(input_end_pos + whitespace_count - 1);
+        let (token, input) = input.split_at(len_);
         Ok((
             input,
             Token {
