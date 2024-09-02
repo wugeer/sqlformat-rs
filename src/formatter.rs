@@ -149,9 +149,9 @@ impl<'a> Formatter<'a> {
 
     fn format_with_spaces(&self, token: &Token<'_>, query: &mut String) {
         let value = if token.kind == TokenKind::Reserved {
-            self.format_reserved_word(token.value)
+            &self.equalize_whitespace(&self.format_reserved_word(token.value))
         } else {
-            Cow::Borrowed(token.value)
+            token.value
         };
         query.push_str(&value);
         query.push(' ');
@@ -298,9 +298,9 @@ impl<'a> Formatter<'a> {
 
     fn format_reserved_word<'t>(&self, token: &'t str) -> Cow<'t, str> {
         if self.options.uppercase {
-            Cow::Owned(token.split_whitespace().collect::<Vec<&str>>().join(" ").to_uppercase())
+            Cow::Owned(token.to_uppercase())
         } else {
-            Cow::Owned(token.split_whitespace().collect::<Vec<&str>>().join(" "))
+            Cow::Borrowed(token)
         }
     }
 
