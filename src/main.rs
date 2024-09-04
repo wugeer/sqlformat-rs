@@ -4,7 +4,12 @@ fn main() {
     // let sql =
     //     "use mydb; with cte_table as (select id, name from test.my_table) select * from cte_table;select 1 from sld.dwxs";
 
-    let sql = r#"CREATE TABLE a (b integer references c (id) on update restrict, other integer)"#;
+    let sql = r#"SELECT
+  table_0.* EXCEPT (profit),
+  details.* EXCEPT (item_id),
+  table_0.profit
+FROM
+  table_0"#;
     // 设置格式选项
     let options = FormatOptions {
         indent: Indent::Spaces(4), // 使用4个空格缩进

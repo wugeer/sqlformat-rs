@@ -20,7 +20,11 @@ impl Indentation {
     }
 
     pub fn get_indent(&self) -> String {
-        println!("self.options.indent={:?} self.indent_types.len()={:?}", self.options.indent, self.indent_types.len());
+        println!(
+            "self.options.indent={:?} self.indent_types.len()={:?}",
+            self.options.indent,
+            self.indent_types.len()
+        );
         match self.options.indent {
             Indent::Spaces(num_spaces) => " "
                 .repeat(num_spaces as usize)

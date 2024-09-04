@@ -1655,9 +1655,36 @@ mod tests {
                 users (name, email)
             VALUES
                 ($1, $2)
-                ON CONFLICT (email) DO UPDATE
+            ON CONFLICT (email) DO UPDATE
             SET
                 name = $1"
+        );
+
+        assert_eq!(format(input, &QueryParams::None, options), expected);
+    }
+
+    #[test]
+    fn it_formats_except_on_columns() {
+        let input = indoc!(
+            "SELECT
+              table_0.* EXCEPT (profit),
+              details.* EXCEPT (item_id),
+              table_0.profit
+            FROM
+              table_0"
+        );
+        let options = FormatOptions {
+            indent: Indent::Spaces(4),
+            ..Default::default()
+        };
+        let expected = indoc!(
+            "
+            SELECT
+                table_0.* EXCEPT (profit),
+                details.* EXCEPT (item_id),
+                table_0.profit
+            FROM
+                table_0"
         );
 
         assert_eq!(format(input, &QueryParams::None, options), expected);

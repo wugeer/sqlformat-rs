@@ -20,7 +20,10 @@ pub(crate) fn format(tokens: &[Token<'_>], params: &QueryParams, options: Format
         } else if token.kind == TokenKind::BlockComment {
             formatter.format_block_comment(token, &mut formatted_query);
         } else if token.kind == TokenKind::ReservedTopLevel {
-            println!("test here token={:?} formatted_query={:?}",token, formatted_query);
+            println!(
+                "test here token={:?} formatted_query={:?}",
+                token, formatted_query
+            );
             formatter.format_top_level_reserved_word(token, &mut formatted_query);
             formatter.previous_reserved_word = Some(token);
         } else if token.kind == TokenKind::ReservedTopLevelNoIndent {
@@ -96,7 +99,7 @@ impl<'a> Formatter<'a> {
 
         let previous_token = self.previous_token(1);
         if previous_token.is_some()
-            && previous_token.unwrap().value.contains("\n")
+            && previous_token.unwrap().value.contains('\n')
             && is_whitespace_followed_by_special_token
         {
             println!("format line comment");
@@ -153,7 +156,7 @@ impl<'a> Formatter<'a> {
         } else {
             token.value
         };
-        query.push_str(&value);
+        query.push_str(value);
         query.push(' ');
     }
 
@@ -306,7 +309,6 @@ impl<'a> Formatter<'a> {
 
     /// Replace any sequence of whitespace characters with single space
     fn equalize_whitespace(&self, token: &str) -> String {
- 
         let mut combined = String::with_capacity(token.len());
         for s in token.split(char::is_whitespace).filter(|s| !s.is_empty()) {
             if !combined.is_empty() {

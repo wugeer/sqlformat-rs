@@ -14,16 +14,20 @@ pub(crate) fn tokenize(mut input: &str, named_placeholders: bool) -> Vec<Token<'
     let mut tokens: Vec<Token> = Vec::new();
 
     let mut last_reserved_token = None;
+    let mut last_reserved_top_level_token = None;
     // Keep processing the string until it is empty
     while let Ok(result) = get_next_token(
         input,
         tokens.last().cloned(),
         last_reserved_token.clone(),
+        last_reserved_top_level_token.clone(),
         named_placeholders,
     ) {
         println!("result:{:?}", &result);
         if result.1.kind == TokenKind::Reserved {
             last_reserved_token = Some(result.1.clone());
+        } else if result.1.kind == TokenKind::ReservedTopLevel {
+            last_reserved_top_level_token = Some(result.1.clone());
         }
         input = result.0;
 
@@ -86,18 +90,38 @@ fn get_next_token<'a>(
     input: &'a str,
     previous_token: Option<Token<'a>>,
     last_reserved_token: Option<Token<'a>>,
+    last_reserved_top_level_token: Option<Token<'a>>,
     named_placeholders: bool,
 ) -> IResult<&'a str, Token<'a>> {
     // print!("input={:?}, previous_token={:?}, last_reserved_token={:?}, named_placeholders={:?}", input, previous_token, last_reserved_token, named_placeholders);
     if input.starts_with("ON CONF") {
-        println!("");
-        println!("get_whitespace_token(input)={:?}", get_whitespace_token(input));
+        println!(
+            "get_whitespace_token(input)={:?}",
+            get_whitespace_token(input)
+        );
         println!("get_comment_token(input)={:?}", get_comment_token(input));
-        println!("get_open_paren_token(input)={:?}", get_open_paren_token(input));
-        println!("get_close_paren_token(input)={:?}", get_close_paren_token(input));
+        println!(
+            "get_open_paren_token(input)={:?}",
+            get_open_paren_token(input)
+        );
+        println!(
+            "get_close_paren_token(input)={:?}",
+            get_close_paren_token(input)
+        );
         println!("get_number_token(input)={:?}", get_number_token(input));
-        println!("get_reserved_word_token(input)={:?}", get_reserved_word_token(input, previous_token.clone(), last_reserved_token.clone()));
-        println!("get_placeholder_token(input)={:?}", get_placeholder_token(input, named_placeholders));
+        println!(
+            "get_reserved_word_token(input)={:?}",
+            get_reserved_word_token(
+                input,
+                previous_token.clone(),
+                last_reserved_token.clone(),
+                last_reserved_top_level_token.clone()
+            )
+        );
+        println!(
+            "get_placeholder_token(input)={:?}",
+            get_placeholder_token(input, named_placeholders)
+        );
         println!("get_word_token(input)={:?}", get_word_token(input));
         println!("get_operator_token(input)={:?}", get_operator_token(input));
     }
@@ -107,7 +131,14 @@ fn get_next_token<'a>(
         .or_else(|_| get_open_paren_token(input))
         .or_else(|_| get_close_paren_token(input))
         .or_else(|_| get_number_token(input))
-        .or_else(|_| get_reserved_word_token(input, previous_token, last_reserved_token))
+        .or_else(|_| {
+            get_reserved_word_token(
+                input,
+                previous_token,
+                last_reserved_token,
+                last_reserved_top_level_token,
+            )
+        })
         .or_else(|_| get_placeholder_token(input, named_placeholders))
         .or_else(|_| get_word_token(input))
         .or_else(|_| get_operator_token(input))
@@ -430,6 +461,7 @@ fn get_reserved_word_token<'a>(
     input: &'a str,
     previous_token: Option<Token<'a>>,
     last_reserved_token: Option<Token<'a>>,
+    last_reserved_top_level_token: Option<Token<'a>>,
 ) -> IResult<&'a str, Token<'a>> {
     // A reserved word cannot be preceded by a "."
     // this makes it so in "my_table.from", "from" is not considered a reserved word
@@ -440,14 +472,20 @@ fn get_reserved_word_token<'a>(
     }
     if input.starts_with("ON CONFL") {
         println!("++++++++++++++++++");
-        println!("get_top_level_reserved_token={:?}",get_top_level_reserved_token(input));
-        println!("get_top_level_reserved_token_no_indent={:?}",get_top_level_reserved_token_no_indent(input));
+        // println!("get_top_level_reserved_token={:?}",get_top_level_reserved_token(input));
+        println!(
+            "get_top_level_reserved_token_no_indent={:?}",
+            get_top_level_reserved_token_no_indent(input)
+        );
         // println!("get_newline_reserved_token={:#?}", get_newline_reserved_token(last_reserved_token));
-        println!("get_plain_reserved_token={:?}",get_plain_reserved_token(input));
+        println!(
+            "get_plain_reserved_token={:?}",
+            get_plain_reserved_token(input)
+        );
     }
 
     alt((
-        get_top_level_reserved_token,
+        get_top_level_reserved_token(last_reserved_top_level_token),
         get_newline_reserved_token(last_reserved_token),
         get_top_level_reserved_token_no_indent,
         get_plain_reserved_token,
@@ -464,50 +502,70 @@ fn get_uc_words(input: &str, words: usize) -> String {
         .to_ascii_uppercase()
 }
 
-fn get_top_level_reserved_token(input: &str) -> IResult<&str, Token<'_>> {
-    let uc_input = get_uc_words(input, 3);
-    let result: IResult<&str, &str> = alt((
-        terminated(tag("ADD"), end_of_word),
-        terminated(tag("AFTER"), end_of_word),
-        terminated(tag("ALTER COLUMN"), end_of_word),
-        terminated(tag("ALTER TABLE"), end_of_word),
-        terminated(tag("DELETE FROM"), end_of_word),
-        terminated(tag("EXCEPT"), end_of_word),
-        terminated(tag("FETCH FIRST"), end_of_word),
-        terminated(tag("FROM"), end_of_word),
-        terminated(tag("GROUP BY"), end_of_word),
-        terminated(tag("GO"), end_of_word),
-        terminated(tag("HAVING"), end_of_word),
-        terminated(tag("INSERT INTO"), end_of_word),
-        terminated(tag("INSERT"), end_of_word),
-        terminated(tag("LIMIT"), end_of_word),
-        terminated(tag("MODIFY"), end_of_word),
-        terminated(tag("ORDER BY"), end_of_word),
-        terminated(tag("SELECT"), end_of_word),
-        terminated(tag("SET CURRENT SCHEMA"), end_of_word),
-        terminated(tag("SET SCHEMA"), end_of_word),
-        terminated(tag("SET"), end_of_word),
-        alt((
-            terminated(tag("UPDATE"), end_of_word),
-            terminated(tag("VALUES"), end_of_word),
-            terminated(tag("WHERE"), end_of_word),
-            terminated(tag("RETURNING"), end_of_word),
-        )),
-    ))(&uc_input);
-    if let Ok((_, token)) = result {
-        let final_word = token.split(' ').last().unwrap();
-        let input_end_pos = input.to_ascii_uppercase().find(final_word).unwrap() + final_word.len();
-        let (token, input) = input.split_at(input_end_pos);
-        Ok((
-            input,
-            Token {
-                kind: TokenKind::ReservedTopLevel,
-                value: token,
-                key: None,
-            },
-        ))
-    } else {
-        Err(Err::Error(Error::new(input, ErrorKind::Alt)))
+fn get_top_level_reserved_token<'a>(
+    last_reserved_top_level_token: Option<Token<'a>>,
+) -> impl FnMut(&'a str) -> IResult<&'a str, Token<'a>> {
+    move |input: &'a str| {
+        let uc_input = get_uc_words(input, 3);
+        let result: IResult<&str, &str> = alt((
+            terminated(tag("ADD"), end_of_word),
+            terminated(tag("AFTER"), end_of_word),
+            terminated(tag("ALTER COLUMN"), end_of_word),
+            terminated(tag("ALTER TABLE"), end_of_word),
+            terminated(tag("DELETE FROM"), end_of_word),
+            terminated(tag("EXCEPT"), end_of_word),
+            terminated(tag("FETCH FIRST"), end_of_word),
+            terminated(tag("FROM"), end_of_word),
+            terminated(tag("GROUP BY"), end_of_word),
+            terminated(tag("GO"), end_of_word),
+            terminated(tag("HAVING"), end_of_word),
+            terminated(tag("INSERT INTO"), end_of_word),
+            terminated(tag("INSERT"), end_of_word),
+            terminated(tag("LIMIT"), end_of_word),
+            terminated(tag("MODIFY"), end_of_word),
+            terminated(tag("ORDER BY"), end_of_word),
+            terminated(tag("SELECT"), end_of_word),
+            terminated(tag("SET CURRENT SCHEMA"), end_of_word),
+            terminated(tag("SET SCHEMA"), end_of_word),
+            terminated(tag("SET"), end_of_word),
+            alt((
+                terminated(tag("UPDATE"), end_of_word),
+                terminated(tag("VALUES"), end_of_word),
+                terminated(tag("WHERE"), end_of_word),
+                terminated(tag("RETURNING"), end_of_word),
+            )),
+        ))(&uc_input);
+        if let Ok((_, token)) = result {
+            let final_word = token.split(' ').last().unwrap();
+            let input_end_pos =
+                input.to_ascii_uppercase().find(final_word).unwrap() + final_word.len();
+            let (token, input) = input.split_at(input_end_pos);
+            if token == "EXCEPT" {
+                println!(
+                    "fffffffffffffffffffffff  last_reserved_top_level_token={:?}",
+                    last_reserved_top_level_token
+                );
+            }
+
+            let kind = if token == "EXCEPT"
+                && last_reserved_top_level_token.is_some()
+                && last_reserved_top_level_token.as_ref().unwrap().value == "SELECT"
+            {
+                TokenKind::Word
+            } else {
+                TokenKind::ReservedTopLevel
+            };
+            Ok((
+                input,
+                Token {
+                    kind,
+                    value: token,
+                    key: None,
+                },
+            ))
+        } else {
+            Err(Err::Error(Error::new(input, ErrorKind::Alt)))
+        }
     }
 }
 
@@ -573,6 +631,7 @@ fn get_top_level_reserved_token_no_indent(input: &str) -> IResult<&str, Token<'_
         terminated(tag("UNION"), end_of_word),
         terminated(tag("UNION ALL"), end_of_word),
         terminated(tag("$$"), end_of_word),
+        terminated(tag("ON CONFLICT"), end_of_word),
     ))(&uc_input);
     if let Ok((_, token)) = result {
         let final_word = token.split(' ').last().unwrap();
@@ -825,7 +884,10 @@ fn get_plain_reserved_one_token(input: &str) -> IResult<&str, Token<'_>> {
                                                 terminated(tag("SOUNDS"), end_of_word),
                                                 terminated(tag("SQL"), end_of_word),
                                                 alt((
-                                                    terminated(tag("SQL_AUTO_IS_NULL"), end_of_word),
+                                                    terminated(
+                                                        tag("SQL_AUTO_IS_NULL"),
+                                                        end_of_word,
+                                                    ),
                                                     terminated(tag("SQL_BIG_RESULT"), end_of_word),
                                                     terminated(tag("SQL_BIG_SELECTS"), end_of_word),
                                                     terminated(tag("SQL_BIG_TABLES"), end_of_word),
@@ -900,7 +962,10 @@ fn get_plain_reserved_one_token(input: &str) -> IResult<&str, Token<'_>> {
                                                         terminated(tag("TYPE"), end_of_word),
                                                         terminated(tag("TYPES"), end_of_word),
                                                         alt((
-                                                            terminated(tag("UNCOMMITTED"), end_of_word),
+                                                            terminated(
+                                                                tag("UNCOMMITTED"),
+                                                                end_of_word,
+                                                            ),
                                                             terminated(tag("UNIQUE"), end_of_word),
                                                             terminated(tag("UNLOCK"), end_of_word),
                                                             terminated(
@@ -941,7 +1006,7 @@ fn get_plain_reserved_one_token(input: &str) -> IResult<&str, Token<'_>> {
     if let Ok((_, token)) = result {
         let final_word = token.split(' ').last().unwrap();
         let input_end_pos = input.to_ascii_uppercase().find(final_word).unwrap() + final_word.len();
-                let (token, input) = input.split_at(input_end_pos);
+        let (token, input) = input.split_at(input_end_pos);
         Ok((
             input,
             Token {
@@ -955,22 +1020,30 @@ fn get_plain_reserved_one_token(input: &str) -> IResult<&str, Token<'_>> {
     }
 }
 
-fn get_plain_reserved_two_token<'a >(input: &'a str) -> IResult<&'a str, Token<'_>> {
-    println!("000000000000000000000000 get_plain_reserved_two_token input={:?}", input);
+fn get_plain_reserved_two_token(input: &str) -> IResult<&str, Token<'_>> {
+    println!(
+        "000000000000000000000000 get_plain_reserved_two_token input={:?}",
+        input
+    );
     // let new_input = input.split_whitespace().collect::<Vec<&str>>().join(" ").as_str();
-    let uc_input= get_uc_words(input, 2);
-    println!("000000000000000000000000  get_plain_reserved_two_token uc_input={:?}", uc_input);
+    let uc_input = get_uc_words(input, 2);
+    println!(
+        "000000000000000000000000  get_plain_reserved_two_token uc_input={:?}",
+        uc_input
+    );
     let result: IResult<&str, &str> = alt((
         terminated(tag("CHARACTER SET"), end_of_word),
         terminated(tag("ON DELETE"), end_of_word),
         terminated(tag("ON UPDATE"), end_of_word),
         terminated(tag("DO UPDATE"), end_of_word),
     ))(&uc_input);
-    println!("000000000000000000000000  get_plain_reserved_two_token result={:?}", result);
+    println!(
+        "000000000000000000000000  get_plain_reserved_two_token result={:?}",
+        result
+    );
     if let Ok((_, token)) = result {
         let final_word = token.split(' ').last().unwrap();
-            let input_end_pos =
-                input.to_ascii_uppercase().find(final_word).unwrap() + final_word.len();
+        let input_end_pos = input.to_ascii_uppercase().find(final_word).unwrap() + final_word.len();
 
         let (token, input) = input.split_at(input_end_pos);
         Ok((
