@@ -1653,4 +1653,29 @@ mod tests {
 
         assert_eq!(format(input, &QueryParams::None, options), expected);
     }
+
+    #[test]
+    fn it_formats_special() {
+        let input = indoc!(
+            r#"SELECT * FROM locations WHERE  coordinates <-> point(3, 3) < 5 
+    AND bounds && box(point(3, 3), point(5, 5))  AND tags @> '{"features": ["parking"]}'  AND coordinates <=> point(1, 2);"#
+        );
+        let options = FormatOptions {
+            indent: Indent::Spaces(4),
+            ..Default::default()
+        };
+        let expected = indoc!(
+            r#"SELECT
+                      *
+                  FROM
+                      locations
+                  WHERE
+                      coordinates <-> point(3, 3) < 5
+                      AND bounds && box(point(3, 3), point(5, 5))
+                      AND tags @> '{"features": ["parking"]}'
+                      AND coordinates <=> point(1, 2);"#
+        );
+
+        assert_eq!(format(input, &QueryParams::None, options), expected);
+    }
 }
