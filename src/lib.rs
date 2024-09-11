@@ -577,8 +577,11 @@ mod tests {
             "foo + bar",
             "foo - bar",
             "foo * bar",
+            "foo & bar",
+            "foo | bar",
             "foo / bar",
             "foo % bar",
+            "foo # bar",
         ];
         let options = FormatOptions::default();
         for input in &inputs {
@@ -597,6 +600,8 @@ mod tests {
             "foo >= bar",
             "foo !< bar",
             "foo !> bar",
+            "foo <=> bar",
+            "foo @> bar",
         ];
         let options = FormatOptions::default();
         for input in &inputs {
@@ -654,6 +659,7 @@ mod tests {
             r#"'two households"'"#,
             r#"'two households'''"#,
             r#"E'alice'''"#,
+            r#"B'10001'''"#,
         ];
         let options = FormatOptions::default();
         for input in &inputs {
